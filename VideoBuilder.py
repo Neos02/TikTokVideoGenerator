@@ -1,26 +1,27 @@
 import cv2
 import ffmpeg
-from mutagen.mp4 import MP4
+
+from tqdm import tqdm
 from moviepy.editor import *
 from random import random
 
 
 class VideoBuilder:
 
-    def __init__(self, audio_data, audio_directory, background_path):
+    def __init__(self, title: str, story: str, title_audio: str, story_audio: str, captions: list[dict], background_path: str):
         self.width = 1080
         self.height = 1920
-        self.audio_data = audio_data
-        self.audio_directory = audio_directory
+        self.title = title
+        self.story = story
+        self.title_audio = title_audio
+        self.story_audio = story_audio
+        self.captions = captions
         self.background_path = self.crop_background(background_path)
 
     def get_video_duration(self):
-        duration = 0
+        print('Calculating video duration')
 
-        for data in self.audio_data:
-            duration += data['duration']
-
-        return duration
+        return float(ffmpeg.probe(self.title_audio)['format']['duration']) + float(ffmpeg.probe(self.story_audio)['format']['duration'])
 
     def get_video_dimensions(self, path):
         video = cv2.VideoCapture(path)
@@ -33,6 +34,8 @@ class VideoBuilder:
 
         if os.path.exists(output_path):
             return output_path
+
+        print('Cropping background video')
 
         aspect_ratio = self.width / self.height
         background_width, background_height = self.get_video_dimensions(path)
@@ -49,35 +52,37 @@ class VideoBuilder:
 
     def get_video(self):
         clip_duration = self.get_video_duration()
-        clip_start_time = random() * (MP4(self.background_path.replace('_cropped', '')).info.length - clip_duration)
+        background_duration = float(ffmpeg.probe(self.background_path)['format']['duration'])
+        clip_start_time = random() * (background_duration - clip_duration)
 
         background_clip = VideoFileClip(self.background_path, target_resolution=(1920, 1080))\
             .subclip(clip_start_time, clip_start_time + clip_duration)
         text_clips = []
-        audio_clips = []
 
-        for i, data in enumerate(self.audio_data):
+        for caption in tqdm(self.captions, desc='Creating captions'):
             text_clips.append(
                 TextClip(
-                    txt=data['text'],
-                    fontsize=70,
+                    txt=caption['text'],
+                    fontsize=90,
                     font='Lilita-One',
                     color='white',
                     size=(int(self.width * .9), self.height),
+                    stroke_width=5,
+                    stroke_color='black',
                     method='caption',
                     transparent=True
                 )
                 .set_position('center')
-                .set_duration(data['duration'])
+                .set_duration(caption['end_time'] - caption['start_time'])
             )
-            print(data['duration'])
-            audio_clips.append(ffmpeg.input(data['filename']))
+
+        print('Finalizing audio')
 
         ffmpeg\
-            .concat(*audio_clips, v=0, a=1)\
+            .concat(ffmpeg.input(self.title_audio), ffmpeg.input(self.story_audio), v=0, a=1)\
             .output('output/audio.m4a')\
             .overwrite_output()\
-            .run()
+            .run(quiet=True)
 
         audio = AudioFileClip('output/audio.m4a')
         text = concatenate_videoclips(text_clips)
