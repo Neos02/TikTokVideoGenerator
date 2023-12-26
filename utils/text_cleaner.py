@@ -51,12 +51,21 @@ def censor(text: str) -> str:
 
 def sanitize_text(text: str) -> str:
     """
-    Remove special characters from text
+    Remove special characters from text and prepare it for TTS
     :param text: text to sanitize
     :return: the modified text
     """
 
-    return re.sub('[(){}[\]*]', '', text)
+    # Remove special characters
+    text = re.sub(r'[(){}[\]*]', '', text)
+
+    # Reformat age and gender
+    matches = re.finditer(r'\d+[FfMm]\s', text)
+    chars = list(text)
+    for match in matches:
+        chars[match.end() - 2] = chars[match.end() - 2].upper()
+
+    return ''.join(chars)
 
 
 def remove_tldr(text: str) -> str:
