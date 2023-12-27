@@ -240,5 +240,6 @@ fabric.properties
 audio_out/
 output/
 background_videos/
+temp/
 .DS_Store
 .idea/

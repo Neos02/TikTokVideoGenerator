@@ -16,18 +16,17 @@ class _HTMLReader(HTMLParser):
         self.text += data
 
 
-def html_to_text(html: str, preserve_linebreaks=False) -> str:
+def html_to_text(html: str) -> str:
     """
     Converts an HTML string to plain text
     :param html: html to convert
-    :param preserve_linebreaks: whether to preserve or remove linebreaks, defaults to False
     :return: a plain text string
     """
 
     html_filter = _HTMLReader()
     html_filter.feed(html)
 
-    return html_filter.text.strip() if preserve_linebreaks else html_filter.text.replace('\n', '').strip()
+    return html_filter.text.strip()
 
 
 def censor(text: str) -> str:
@@ -57,10 +56,16 @@ def sanitize_text(text: str) -> str:
     """
 
     # Remove special characters
-    text = re.sub(r'[(){}[\]*]', '', text)
+    text = re.sub(r'[(){}[\]*\n]', '', text)
+
+    # Replace abbreviations for 'with'
+    text = re.sub(r'\s(w|w/)\s', ' with ', text, flags=re.IGNORECASE)
+
+    # Make bf and gf uppercase
+    text = re.sub(r'bf|gf', lambda m: m.group().upper(), text)
 
     # Reformat age and gender
-    matches = re.finditer(r'\d+[FfMm]\s', text)
+    matches = re.finditer(r'\d+[fm]\s', text, flags=re.IGNORECASE)
     chars = list(text)
     for match in matches:
         chars[match.end() - 2] = chars[match.end() - 2].upper()
@@ -78,7 +83,13 @@ def remove_tldr(text: str) -> str:
     tl_index = text.casefold().index('tl')
     dr_index = text.casefold().index('dr')
 
+    try:
+        new_line_index = text.index('\n', tl_index)
+    except ValueError:
+        # Skip the TLDR
+        new_line_index = dr_index - tl_index + 2
+
     if 0 < dr_index - tl_index <= 3:
-        return text[:tl_index]
+        return text[:tl_index] + text[tl_index + new_line_index:]
 
     return text
