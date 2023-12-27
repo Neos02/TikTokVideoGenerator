@@ -1,6 +1,5 @@
 import whisper
 
-
 model = whisper.load_model('medium')
 
 
@@ -14,6 +13,7 @@ def get_timestamps(filepath: str) -> list[dict]:
     """
     print("Reading timestamps from audio")
 
-    result = model.transcribe(filepath, verbose=False)
+    result = model.transcribe(filepath, language='en', verbose=False)
 
-    return [{'text': segment['text'], 'start_time': segment['start'], 'end_time': segment['end']} for segment in result['segments']]
+    return [{'text': segment['text'], 'start_time': segment['start'], 'end_time': segment['end']} for segment in
+            result['segments']]

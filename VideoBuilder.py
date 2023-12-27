@@ -84,7 +84,7 @@ class VideoBuilder:
             .overwrite_output()\
             .run(quiet=True)
 
-        audio = AudioFileClip('output/audio.m4a')
+        audio = AudioFileClip('./temp/audio.m4a')
         text = concatenate_videoclips(text_clips)
         video = CompositeVideoClip(size=(self.width, self.height), use_bgclip=True, clips=[background_clip, text.set_position('center')]).set_audio(audio)
 
